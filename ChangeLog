@@ -1,0 +1,37 @@
+v4.15.0
+
+Added support for Alveo™ XtremeScale™ X3522 low latency network adapter
+Added support for SN1000 SmartNICs
+Updated sfreport file header to GPLv2
+SWUTILS-888: add packet buffer usage for devices in sfreport
+SWUTILS-883: Updated sfreport to list Huge pages related information.
+SWUTILS-872: Updated sfreport to collect only last two days onload cplane logs
+SWUTILS-875: Preserve interface order in the interface stats table
+SWUTILS-876: make Ports debugfs table values preformatted
+
+v4.14.0
+
+SWUTILS-861: Fix /var/log/messages related warning observed on Ubuntu servers
+SWUTILS-860: Updated reference to Solarflare with Xilinx
+SWUTILS-852: Included OVS related information for smartNIC
+SWUTILS-851: Fix warnings caused by devlink dev info changes
+SWUTILS-848: Include different version of SN1000 NIC softwares
+SWUTILS-838: Included ip -s -d addr show output
+SWUTILS-748: Included intel_idle max_cstate value
+SWUTILS-792: Included ethtool -T output
+
+v4.13.0
+
+bug77618: Updated sfreport to list xdp interrupts for solarflare interfaces
+bug66741: Fixed irq table does not show in sfreport with kernel 4.x
+bug77391: sfreport minor fixes/cleanup 
+bug68171: Included full sysctl -a output
+bug71135: Included /var/log/solar_aoed.log output
+bug54045: Included  'sysctl net.core' output
+bug74508: included sfptpd version info
+bug70291: bug71163: dump cplane related states and messages
+bug72723: highlight port_ counters
+Task69972: Improve sfreport navigation
+bug69266: fix misleading highlighting in interesting values section
+bug55756: Included sfupdate command to get all component version info
+bug67228: Included ethtool -m output for solarflare interfaces
