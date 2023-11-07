@@ -2488,6 +2488,32 @@ sub print_x3_debug_info {
 	print_footer('x3debug');
 } # print_x3_debug_info
 
+sub print_nic_type {
+    my ($devices, $sfc_drvinfo) = @_;
+    my %device_drivers = get_device_drivers();
+    my %sfc_devices = get_sfc_devices($devices);
+    my @headings = ('subsys_id','vpdr_SN');
+    my @vpd_attributes = qw(address product_name vpdr_PN vpdr_EC vpdr_SN);
+    my %vpd_values = get_sfc_vpd($sfc_drvinfo, @vpd_attributes);
+    my @data = map({[$_, sprintf('%04x', $sfc_devices{$sfc_drvinfo->{$_}->bus_info}->SUBSYSTEM_ID), $vpd_values{$_}->{"vpdr_SN"},]} keys(%$sfc_drvinfo));
+
+    my $values = \@data;
+    my $attributes = @headings;
+    my @tmp=0;
+    if(@data){
+    foreach my $line (@data){
+        if( grep(/^$line->[2]/, @tmp) ){
+        if( ($line->[1] eq "082C") or ($line->[1] eq "082D")){
+            $out_file->print("<p>Note: NIC with Serial number: $line->[2] is a Dell version NIC </p>");
+        }
+        elsif(($line->[1] eq "082F")){
+            $out_file->print("<p>Note: NIC with Serial number: $line->[2] is a Lenovo version NIC </p>");
+        }}
+        push(@tmp,$line->[2]);
+        }}
+    return 0;
+} #print brand version of the NIC
+
 sub print_sfc_vpd {
     my ($devices, $sfc_drvinfo) = @_;
 
@@ -2840,6 +2866,7 @@ if ($out_format != format_minimal) {
     print_aoe_status;
 
     print_interesting;
+    print_nic_type($devices, $sfc_drvinfo);
 } else {
     print_short_device_status($devices, $sfc_drvinfo);
 }
