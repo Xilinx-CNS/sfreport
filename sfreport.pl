@@ -1,7 +1,9 @@
 #!/usr/bin/perl -w
 # SPDX-License-Identifier: GPL-2.0
 # Reporting tool for AMD Solarflare under linux
-# Copyright 2022 AMD Inc.
+# Copyright (C) 2007-2019, Solarflare Communications.
+# Copyright (C) 2019-2022, Xilinx, Inc.
+# Copyright (C) 2022-2023, Advanced Micro Devices, Inc.
 #
 # This program is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License version 2 as published
@@ -2129,7 +2131,7 @@ tabulate('TCP (IPv4) settings',
 	# ethtool's default output is difficult to parse so
 	# include it (almost) verbatim.
 	my $ethtool_output;
-	for my $option ('', '-a', '-c', '-k', '-g', '-m', '-T') {
+	for my $option ('', '-a', '-c', '-k', '-g', '-m', '-T', '-n') {
 	    if (my $ethtool_file =
 		new FileHandle("ethtool $option '$iface_name' 2>/dev/null |")) {
 		while (<$ethtool_file>) {
