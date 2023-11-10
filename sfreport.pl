@@ -1724,6 +1724,11 @@ sub print_device_status {
         print_preformatted($ptp_file);
     }
 
+    if (my $clock_file = `cat /sys/devices/system/clocksource/*/current_clocksource 2>/dev/null` ) {
+        print_heading('Clock Source (/sys/devices/system/clocksource/*/current_clocksource) ');
+        print_preformatted($clock_file);
+    }
+
     print_heading('Network interfaces for AMD Solarflare adapters', 'controller');
     tabulate('',
 	     undef,
