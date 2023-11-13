@@ -1719,6 +1719,11 @@ sub print_device_status {
 	     ['name', 'version'],
 	     \@onload_comps);
 
+    if (my $tcpdirect_file = `zf_stackdump version 2>&1 |grep version`) {
+        print_heading('TCPDirect version');
+        print_preformatted($tcpdirect_file);
+    }
+
     if (my $ptp_file = `cat /var/lib/sfptpd/version 2>/dev/null` ) {
         print_heading('sfptpd version installed');
         print_preformatted($ptp_file);
