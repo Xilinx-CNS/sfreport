@@ -2052,6 +2052,23 @@ tabulate('TCP (IPv4) settings',
         print_preformatted($output);
     }
 
+    if (my $netns_file = new FileHandle("ip netns 2>&1 |")) {
+        my $output = '';
+        while (<$netns_file>) {
+            $output .= $_;
+        }
+        print_heading('Namespace (ip netns)');
+        print_preformatted($output);
+        
+        if (my $netns_file2 = new FileHandle("ip netns identify 2>&1 |")){
+            my $output2 = '';
+        while (<$netns_file2>) {
+            $output2 .= $_;
+        }
+            print_preformatted("sfreport run in the namespace (ip netns identify): $output2");
+        }
+    }
+
     if (my $addr_file = new FileHandle("ip -s -d addr show 2>&1 |")) {
         my $output = '';
         while (<$addr_file>) {
@@ -2591,6 +2608,7 @@ sub print_nic_type {
     my @tmp=0;
     if(@data){
     foreach my $line (@data){
+        if($line->[2]){
         if( grep(/^$line->[2]/, @tmp) ){
         if( ($line->[1] eq "082C") or ($line->[1] eq "082D")){
             $out_file->print("<p>Note: NIC with Serial number: $line->[2] is a Dell version NIC </p>");
@@ -2599,7 +2617,7 @@ sub print_nic_type {
             $out_file->print("<p>Note: NIC with Serial number: $line->[2] is a Lenovo version NIC </p>");
         }}
         push(@tmp,$line->[2]);
-        }}
+        }}}
     return 0;
 } #print brand version of the NIC
 
