@@ -2915,6 +2915,7 @@ if ($out_format == format_html) {
       .warn { background-color: #ccaa55 }
       .perf { background-color: #cc8080 }
       .badpkt { background-color: #cc55aa }
+      td > pre { margin: 0; }
     </style>
     <script>
     function toggle(id) {
