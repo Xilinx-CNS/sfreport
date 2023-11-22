@@ -689,6 +689,16 @@ sub get_onload_version {
     return $onload_ver;
 }
 
+sub get_xilinx_efct_version {
+    my $efct_ver;
+    if (my $module_ver = read_file("/sys/module/xilinx_efct/version")) {
+        $module_ver =~ s/\n//s;
+	$efct_ver = $module_ver;
+    } else {
+        $efct_ver = 'N/A';
+    }
+    return $efct_ver;
+}
 
 sub get_linux_cpuinfo {
     my @log_procs;
@@ -2339,7 +2349,7 @@ sub get_recursive_file_in_dir {
 		push @all_files, get_recursive_file_in_dir($full_path);
 	} } closedir $dh;
 
-    return sort @all_files;
+    return @all_files;
 }
 
 sub print_preformatted_file {
@@ -2482,6 +2492,120 @@ sub print_sfc_debug_info {
 	print_footer('sfcdebug');
 } # print_sfc_debug_info
 
+sub print_x3_debug_info_compat {
+    # This relies on debugfs/procfs support which is likely to be
+    # excluded from production drivers.  The most interesting
+    # information available here should also be found in the kernel
+    # log or the interface statistics.
+    my @debug_dirs = find_x3_debug_dir();
+
+    print_heading('X3 Debug Info', 'x3debug');
+    foreach my $debug_dir (@debug_dirs) {
+        my $base_dir = "$debug_dir";
+        if (my $card_dirs = list_dir($debug_dir)) {
+            my ($attributes, $values, $sub_dirs, $sub_dirs_aux, $sub_dirs_rxq, $sub_sub_dirs);
+
+            my $i = 0;
+            #print "card dir: $card_dirs\n"
+            ($attributes, $values, $sub_dirs) =
+            read_debug_dir($base_dir, @$card_dirs);
+            tabulate('X3 NIC Params', 'x3_nic',
+                 $attributes, $values, orient_vert);
+
+            ($attributes, $values) =
+            read_debug_dir($base_dir, grep(m|/design_params$|, @$sub_dirs));
+            tabulate('X3 Design Params', 'x3_design_params',
+                 $attributes, $values, orient_vert);
+
+            ($attributes, $values, $sub_dirs) =
+            read_debug_dir($base_dir, grep(m|/port|, @$sub_dirs));
+            tabulate('X3 Ports', 'x3_port',
+                 $attributes, $values, orient_vert);
+
+            ($attributes, $values) =
+            read_debug_dir($base_dir, grep(m|/errors$|, @$sub_dirs));
+            tabulate('X3 Error counts', 'x3_errors',
+                 $attributes, $values, orient_vert);
+
+            ($attributes, $values) =
+            read_debug_dir($base_dir, grep(m|/link_state$|, @$sub_dirs));
+            tabulate('X3 Link State', 'x3_linkstate',
+                 $attributes, $values, orient_vert);
+
+            ($attributes, $values) =
+            read_debug_dir($base_dir, grep(m|/txq|, @$sub_dirs));
+            tabulate('X3 Transmit queues', 'x3_txqueue',
+                 $attributes, $values, orient_vert);
+
+            ($attributes, $values) =
+            read_debug_dir($base_dir, grep(m|/evq|, @$sub_dirs));
+            tabulate('X3 Event queues', 'x3_eventqueue',
+                 $attributes, $values, orient_vert);
+
+            ($attributes, $values, $sub_dirs_aux) =
+            read_debug_dir($base_dir, grep(m|/efct|, @$sub_dirs));
+            tabulate('X3 Aux Device', 'x3_linkstate',
+                 $attributes, $values, orient_vert);
+
+            ($attributes, $values, $sub_sub_dirs) =
+            read_debug_dir($base_dir, grep(m|/client|, @$sub_dirs_aux));
+            tabulate('X3 Aux Client', 'x3_client',
+                 $attributes, $values, orient_vert);
+
+            ($attributes, $values) =
+            read_debug_dir($base_dir, grep(m|rxq_info|, @$sub_sub_dirs));
+            tabulate('X3 RxqInfo', 'x3_client',
+                $attributes, $values, orient_vert);
+
+            ($attributes, $values, $sub_dirs_rxq) =
+            read_debug_dir($base_dir, grep(m|/rxq|, @$sub_dirs));
+            tabulate('X3 Receive queues', 'x3_rxqueue',
+                 $attributes, $values, orient_vert);
+
+            ($attributes, $values, $sub_sub_dirs) =
+            read_debug_dir($base_dir, grep(m|/nbl$|, @$sub_dirs_rxq));
+            tabulate('X3 NIC Buffer List', 'x3_rxqueue',
+                 $attributes, $values, orient_vert);
+
+            print_heading('X3 NB List');
+            for ($i = 0; $i < 8; $i++) {
+                ($attributes, $values) =
+                read_debug_dir($base_dir, grep(m|rxq$i/nbl/nb|, @$sub_sub_dirs));
+                tabulate("Rxq$i", 'x3_rxqueue',
+                    $attributes, $values, orient_vert);
+            }
+
+            ($attributes, $values) =
+            read_debug_dir($base_dir, grep(m|/hpl$|, @$sub_dirs_rxq));
+            tabulate('X3 HP List', 'x3_rxqueue',
+                 $attributes, $values, orient_vert);
+
+            ($attributes, $values, $sub_sub_dirs) =
+            read_debug_dir($base_dir, grep(m|/dbl$|, @$sub_dirs_rxq));
+
+            print_heading('X3 DB List');
+            for ($i = 0; $i < 8; $i++) {
+                ($attributes, $values) =
+                read_debug_dir($base_dir, grep(m|rxq$i/dbl/db|, @$sub_sub_dirs));
+                tabulate("Rxq$i", 'x3_rxqueue',
+                    $attributes, $values, orient_vert);
+            }
+
+            ($attributes, $values, $sub_sub_dirs) =
+            read_debug_dir($base_dir, grep(m|/sbl$|, @$sub_dirs_rxq));
+
+            print_heading('X3 SB List');
+            for ($i = 0; $i < 8; $i++) {
+                ($attributes, $values) =
+                read_debug_dir($base_dir, grep(m|rxq$i/sbl/sb|, @$sub_sub_dirs));
+                tabulate("Rxq$i", 'x3_rxqueue',
+                    $attributes, $values, orient_vert);
+            }
+        }
+    }
+	print_footer('x3debug');
+} # print_x3_debug_info_compat
+
 sub print_x3_debug_info {
     # This relies on debugfs/procfs support which is likely to be
     # excluded from production drivers.  The most interesting
@@ -2499,98 +2623,113 @@ sub print_x3_debug_info {
             my $i = 0;
 
             ($attributes, $values) =
-            read_key_value_debug_files($base_dir, grep(m|/card_params$|, @file_list));
+            read_key_value_debug_files($base_dir, grep(m|/card_params$|, reverse @file_list));
             tabulate('X3 Card Params', 'x3_card_params',
                  $attributes, $values, orient_vert);
 
             ($attributes, $values) =
-            read_key_value_debug_files($base_dir, grep(m|/design_params$|, @file_list));
+            read_key_value_debug_files($base_dir, grep(m|/design_params$|, reverse @file_list));
             tabulate('X3 Design Params', 'x3_design_params',
                  $attributes, $values, orient_vert);
 
             ($attributes, $values) =
-            read_key_value_debug_files($base_dir, grep(m|/port_params$|, @file_list));
+            read_key_value_debug_files($base_dir, grep(m|/port_params$|, reverse @file_list));
             tabulate('X3 Port params', 'x3_port',
                  $attributes, $values, orient_vert);
                              
             ($attributes, $values) =
-            read_key_value_debug_files($base_dir, grep(m|/nic_errors$|, @file_list));
+            read_key_value_debug_files($base_dir, grep(m|/nic_errors$|, reverse @file_list));
             tabulate('X3 NIC errors', 'x3_errors',
                  $attributes, $values, orient_vert);
 
             ($attributes, $values) =
-            read_key_value_debug_files($base_dir, grep(m|/link_state$|, @file_list));
+            read_key_value_debug_files($base_dir, grep(m|/link_state$|, reverse @file_list));
             tabulate('X3 Link State', 'x3_linkstate',
                  $attributes, $values, orient_vert);
 
 
             ($attributes, $values) =
-            read_key_value_debug_files($base_dir, grep(m|/txq|, @file_list));
+            read_key_value_debug_files($base_dir, grep(m|/txq|, reverse @file_list));
             tabulate('X3 Transmit queues', 'x3_txqueue',
                  $attributes, $values, orient_vert);
 
             ($attributes, $values) =
-            read_key_value_debug_files($base_dir, grep(m|/evq|, @file_list));
+            read_key_value_debug_files($base_dir, grep(m|/evq|, reverse @file_list));
             tabulate('X3 Event queues', 'x3_eventqueue',
                  $attributes, $values, orient_vert);
 
             ($attributes, $values) =
-            read_key_value_debug_files($base_dir, grep(m|/aux_dev_params$|, @file_list));
+            read_key_value_debug_files($base_dir, grep(m|/aux_dev_params$|, reverse @file_list));
             tabulate('aux_dev_params', 'x3_aux_dev_params',
                  $attributes, $values, orient_vert);
             
             ($attributes, $values) =
-            read_key_value_debug_files($base_dir, grep(m|/client_params|, @file_list));
+            read_key_value_debug_files($base_dir, grep(m|/client_params|, reverse @file_list));
             tabulate('client_params', 'x3_client',
                  $attributes, $values, orient_vert);
             
 	    print_heading("client_rxinfo\n");
-	    print_preformatted_file(grep(m|client_rxinfo|, @file_list));
+	    print_preformatted_file(grep(m|client_rxinfo|, reverse @file_list));
              
             ($attributes, $values) =
-            read_key_value_debug_files($base_dir, grep(m|/rx_queue_params|, @file_list));
+            read_key_value_debug_files($base_dir, grep(m|/rx_queue_params|, reverse @file_list));
             tabulate('X3 Receive queues params', 'x3_rxqueue',
                  $attributes, $values, orient_vert);
 
             ($attributes, $values) =
-            read_key_value_debug_files($base_dir, grep(m|/nbl_params$|, @file_list));
+            read_key_value_debug_files($base_dir, grep(m|/nbl_params$|, reverse @file_list));
             tabulate('X3 NBL Params', 'x3_nbl_params',
                  $attributes, $values, orient_vert);
             
 
             print_heading('X3 NB List');
-	    for ($i = 0; $i < 4; $i++) {
-		    my @file = grep { $_ =~ m|port$i/rxq\d{1,$maxrx}/nbl_buf_list| } @file_list;
-		    if (@file) {
-			    print_heading("port$i/nbl_buf_list\n");
-			    print_preformatted_file(@file);
+	    my @buf_files = grep { $_ =~ m|rxq\d{1,$maxrx}/nbl_buf_list| } reverse @file_list;
+	    my %bus_val;
+	    map { my $bus = (split('/'))[-4]; $bus =~ s/\.\d$//; push @{$bus_val{$bus}}, $_ } @buf_files;
+	    for my $bus (keys %bus_val) {
+		    for ($i = 0; $i < 4; $i++) {
+			    my @file = grep { $_ =~ m|port$i/rxq\d{1,$maxrx}/nbl_buf_list| } @{$bus_val{$bus}};
+			    if (@file) {
+				    print_heading("$bus/port$i\n");
+				    print_preformatted_file(@file);
+			    }
 		    }
 	    }
 
 	    ($attributes, $values) =
-            read_debug_oneline_files($base_dir, grep(m|/max_hp_id$|, @file_list));
+            read_debug_oneline_files($base_dir, grep(m|/max_hp_id$|, reverse @file_list));
             tabulate('max_hp_id', 'x3_hbl',
                  $attributes, $values, orient_vert);
 
             print_heading('X3 DB List');
-	    for ($i = 0; $i < 4; $i++) {
-		    my @file = grep { $_ =~ m|port$i/rxq\d{1,$maxrx}/dbl_buf_list| } @file_list;
-		    if (@file) {
-			    print_heading("port$i/dbl_buf_list\n");
-			    print_preformatted_file(@file);
+	    my @db_buf_files = grep { $_ =~ m|rxq\d{1,$maxrx}/dbl_buf_list| } reverse @file_list;
+	    my %db_bus_val;
+	    map { my $bus = (split('/'))[-4]; $bus =~ s/\.\d$//; push @{$db_bus_val{$bus}}, $_ } @db_buf_files;
+	    for my $bus (keys %db_bus_val) {
+		    for ($i = 0; $i < 4; $i++) {
+			    my @file = grep { $_ =~ m|port$i/rxq\d{1,$maxrx}/dbl_buf_list| } @{$db_bus_val{$bus}};
+			    if (@file) {
+				    print_heading("$bus/port$i\n");
+				    print_preformatted_file(@file);
+			    }
 		    }
 	    }
 
             print_heading('X3 SB List');
-	    for ($i = 0; $i < 4; $i++) {
-		    my @file = grep { $_ =~ m|port$i/rxq\d{1,$maxrx}/sbl_buf_list| } @file_list;
-		    if (@file) {
-			    print_heading("port$i/sbl_buf_list\n");
-			    print_preformatted_file(@file);
+	    my @sb_buf_files = grep { $_ =~ m|rxq\d{1,$maxrx}/sbl_buf_list| } reverse @file_list;
+	    my %sb_bus_val;
+	    map { my $bus = (split('/'))[-4]; $bus =~ s/\.\d$//; push @{$sb_bus_val{$bus}}, $_ } @sb_buf_files;
+	    for my $bus (keys %sb_bus_val) {
+		    for ($i = 0; $i < 4; $i++) {
+			    my @file = grep { $_ =~ m|port$i/rxq\d{1,$maxrx}/sbl_buf_list| } @{$sb_bus_val{$bus}};
+			    if (@file) {
+				    print_heading("$bus/port$i\n");
+				    print_preformatted_file(@file);
+			    }
 		    }
 	    }
     }
- }
+}
 	print_footer('x3debug');
 } # print_x3_debug_info
 
@@ -2847,6 +2986,22 @@ sub apply_interest_rules {
     return $result;
 } # apply_interest_rules
 
+# Return -1 if $version1 less than $version2
+# Return 1 if $version1 greater than $version2
+# Return 0 if $version1 and $version2 are equal
+sub compare_versions {
+    my ($version1, $version2) = @_;
+
+    my @parts1 = split /\./, $version1;
+    my @parts2 = split /\./, $version2;
+
+    for my $i (0 .. $#parts1) {
+        return -1 if ($parts1[$i] < $parts2[$i]);
+        return 1 if ($parts1[$i] > $parts2[$i]);
+    }
+    return 0;
+}
+
 # Establish output stream.
 my $minimal = '';
 GetOptions("m" => \$minimal);
@@ -2960,6 +3115,9 @@ if ($out_format == format_html) {
 
 my $devices = get_pci_devices();
 my $sfc_drvinfo = get_sfc_drvinfo();
+my $efct_version = get_xilinx_efct_version();
+my $target_efct_version = "1.5.4.0";
+my $check_version_info = compare_versions($efct_version, $target_efct_version);
 
 if ($out_format != format_minimal) {
     my $smbios = new SmbiosInfo;
@@ -2968,7 +3126,11 @@ if ($out_format != format_minimal) {
     print_device_status($devices, $sfc_drvinfo);
     print_net_status($sfc_drvinfo);
     print_sfc_debug_info;
-    print_x3_debug_info;
+    if ($check_version_info < 0) {
+	    print_x3_debug_info_compat;
+    } else {
+	    print_x3_debug_info;
+    }
     print_sfc_vpd($devices, $sfc_drvinfo);
     print_mtd;
     print_aoe_status;
