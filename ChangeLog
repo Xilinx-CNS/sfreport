@@ -45,3 +45,5 @@ Task69972: Improve sfreport navigation
 bug69266: fix misleading highlighting in interesting values section
 bug55756: Included sfupdate command to get all component version info
 bug67228: Included ethtool -m output for solarflare interfaces
+
+This file: (c) Copyright 2020-2023 Advanced Micro Devices, Inc.
