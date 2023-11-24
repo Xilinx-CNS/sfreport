@@ -1,8 +1,8 @@
 #!/usr/bin/perl -w
 # SPDX-License-Identifier: GPL-2.0
 # Copyright (C) 2022-2023, Advanced Micro Devices, Inc.
-# Copyright (C) 2007-2019, Solarflare Communications.
 # Copyright (C) 2019-2022, Xilinx, Inc.
+# Copyright (C) 2007-2019, Solarflare Communications.
 
 # Reporting tool for AMD Solarflare under linux
 
