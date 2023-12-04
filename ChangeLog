@@ -1,6 +1,6 @@
 v4.16.0
 
-XNET-602: Fix sfreport compailation warning
+XNET-602: Fix sfreport compilation warning
 XNET-599: Update sfreport multicard support
 XNET-602: sfreport support for backward compatible X3 drivers
 SWUTILS-876: reduce spacing around preformatted text in table cell
