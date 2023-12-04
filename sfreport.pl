@@ -3002,6 +3002,23 @@ sub compare_versions {
     }
     return 0;
 }
+sub check_x3_debug_info {
+
+    my @x3_debug_dirs = find_x3_debug_dir();
+
+    my $x3_dir = $x3_debug_dirs[0];
+    if (defined $x3_dir and -d $x3_dir) {
+	    my $efct_version = get_xilinx_efct_version();
+	    my $target_efct_version = "1.5.4.0";
+	    my $check_version_info = compare_versions($efct_version, $target_efct_version);
+	    if ($check_version_info < 0) {
+		    print_x3_debug_info_compat;
+	    } else {
+		    print_x3_debug_info;
+	    }
+    }
+}
+
 
 # Establish output stream.
 my $minimal = '';
@@ -3116,9 +3133,6 @@ if ($out_format == format_html) {
 
 my $devices = get_pci_devices();
 my $sfc_drvinfo = get_sfc_drvinfo();
-my $efct_version = get_xilinx_efct_version();
-my $target_efct_version = "1.5.4.0";
-my $check_version_info = compare_versions($efct_version, $target_efct_version);
 
 if ($out_format != format_minimal) {
     my $smbios = new SmbiosInfo;
@@ -3127,11 +3141,7 @@ if ($out_format != format_minimal) {
     print_device_status($devices, $sfc_drvinfo);
     print_net_status($sfc_drvinfo);
     print_sfc_debug_info;
-    if ($check_version_info < 0) {
-	    print_x3_debug_info_compat;
-    } else {
-	    print_x3_debug_info;
-    }
+    check_x3_debug_info;
     print_sfc_vpd($devices, $sfc_drvinfo);
     print_mtd;
     print_aoe_status;
