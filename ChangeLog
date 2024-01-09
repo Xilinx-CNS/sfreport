@@ -1,8 +1,7 @@
 v4.16.0
 
-XNET-602: Fix sfreport compilation warning
 XNET-599: Update sfreport multicard support
-XNET-602: sfreport support for backward compatible X3 drivers
+XNET-602: sfreport support for backward compatible X3 drivers, fixed compilation warning
 SWUTILS-876: reduce spacing around preformatted text in table cell
 XNET-593: Update sfreport with new X3 debugfs changes.
 SWUTILS-510: Included current clock source information
