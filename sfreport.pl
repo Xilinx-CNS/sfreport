@@ -3032,7 +3032,7 @@ my $out_path;
 if ($#ARGV >= 0) {
     $out_path = $ARGV[0];
 } else {
-    $out_path = POSIX::strftime('sfreport-%Y-%m-%d-%H-%M-%S.html',
+    $out_path = 'sfreport-'.$hostname.POSIX::strftime('-%Y-%m-%d-%H-%M-%S.html',
 				localtime);
 }
 
@@ -3052,7 +3052,7 @@ if ($out_format != format_minimal) {
     if ($out_path eq '-') {
         $out_file = *STDOUT{IO};
     } else {
-        $out_path = POSIX::strftime('sfreport-%Y-%m-%d-%H-%M-%S.txt',
+        $out_path = 'sfreport-'.$hostname.POSIX::strftime('-%Y-%m-%d-%H-%M-%S.txt',
                                     localtime);
         $out_file = new FileHandle($out_path, 'w') or die "open: $!";
     }        
