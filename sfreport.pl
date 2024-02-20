@@ -3022,7 +3022,14 @@ sub check_x3_debug_info {
 
 # Establish output stream.
 my $minimal = '';
-GetOptions("m" => \$minimal);
+my $version = '';
+GetOptions("m" => \$minimal,
+           "version|v" => \$version);
+
+if ($version) {
+    STDERR->print("AMD Solarflare system report (version $VERSION)\n");
+    exit 0;
+}
 
 if ($minimal) {
     $out_format = format_minimal;
@@ -3034,6 +3041,10 @@ if ($#ARGV >= 0) {
 } else {
     $out_path = 'sfreport-'.$hostname.POSIX::strftime('-%Y-%m-%d-%H-%M-%S.html',
 				localtime);
+}
+
+if ($out_path ne '-') {
+    STDERR->print("AMD Solarflare system report (version $VERSION)\n");
 }
 
 if ($out_format != format_minimal) {
