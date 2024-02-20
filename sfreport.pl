@@ -2403,7 +2403,7 @@ sub read_debug_oneline_files {
 	    my $line = <$fh>;
 	    chomp $line; # Remove newline characters
             if ($line eq '') {
-		continue;
+		next;
 	}
 	    push @attributes, $relative_path;
 	    $values[-1]->{$relative_path} = $line;
