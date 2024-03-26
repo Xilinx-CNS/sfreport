@@ -2169,7 +2169,7 @@ tabulate('TCP (IPv4) settings',
 	# ethtool's default output is difficult to parse so
 	# include it (almost) verbatim.
 	my $ethtool_output;
-	for my $option ('', '-a', '-c', '-k', '-g', '-m', '-T', '-n') {
+	for my $option ('', '-a', '-c', '-k', '-g', '-m', '-T', '-n', '--show-fec') {
 	    if (my $ethtool_file =
 		new FileHandle("ethtool $option '$iface_name' 2>/dev/null |")) {
 		while (<$ethtool_file>) {
