@@ -2170,8 +2170,8 @@ tabulate('TCP (IPv4) settings',
     for my $iface_name (sort keys(%iface_names)) {
 	# ethtool's default output is difficult to parse so
 	# include it (almost) verbatim.
-	my $ethtool_output;
-	for my $option ('', '-a', '-c', '-k', '-g', '-m', '-T', '-n') {
+	my %ethtool_output;
+	for my $option ('', '-a', '-c', '-k', '-g', '-m', '-T', '-n', '--show-fec') {
 	    if (my $ethtool_file =
 		new FileHandle("ethtool $option '$iface_name' 2>/dev/null |")) {
 		while (<$ethtool_file>) {
@@ -2183,13 +2183,16 @@ tabulate('TCP (IPv4) settings',
 		    } else {
 			s/^\s*/        /gm;     # indent others consistently
 		    }
-		    $ethtool_output .= $_;
+		    $ethtool_output{$option} .= $_;
 		}
 	    }
 	}
-	if (defined($ethtool_output)) {
+	if (defined(keys %ethtool_output)) {
 	    print_heading("Ethernet settings for $iface_name (ethtool)", 'ethset_'.$iface_name);
-	    print_preformatted($ethtool_output);
+            for(sort(keys %ethtool_output)) {
+                print_heading("ethtool $_ $iface_name");
+                print_preformatted($ethtool_output{$_});
+            }
       print_footer('ethset_'.$iface_name);
 	}
     }
