@@ -1,3 +1,12 @@
+v4.16.1
+SWUTILS-929: Fixed Hardware monitors not reporting output
+SWUTILS-930: Added ethtool headings for individual commands
+SWUTILS-930: Add 'ethtool --show-fec' output to sfreport
+SWUTILS-805: Fix MemFree and MemAvailable labels
+SWUTILS-923: syntax error with "continue" instruction, observed with RHEL6 using old perl versions (v5.10.1)
+SWUTILS-915: Added -v and --version options to print version information
+SWUTILS-922: Add 'hostname' to sfreport generated name
+ 
 v4.16.0
 
 XNET-599: Update sfreport multicard support
