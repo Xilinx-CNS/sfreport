@@ -1801,6 +1801,8 @@ sub print_device_status {
 
 	for (@$hwmon_devices) {
 	    my $device_dir = "/sys/class/hwmon/$_/device";
+	    my $device_dir1 = "/sys/class/hwmon/$_";
+	    my $sensor_values;
 
 	    # Check whether this is a grandchild of a device handled
 	    # by sfc (the I2C adapter is a child of the PCI device and
@@ -1814,9 +1816,17 @@ sub print_device_status {
 	    # id and the I2C address of the hardware monitor.
 	    my $address = readlink($device_dir);
 	    $address =~ s|.*/([^/]*)$|$1|;
-	    my $sensor_values = read_dir_files($device_dir,
-					       sub {/^(in|temp)\d+_/},
-					       sub {chomp});
+            if ( my $temp_file = `ls $device_dir |grep temp`){
+                $sensor_values = read_dir_files($device_dir,
+                                               sub {/^(in|temp)\d+_/},
+                                               sub {chomp});
+            }
+            else {
+                $sensor_values = read_dir_files($device_dir1,
+                                               sub {/^(in|temp)\d+_/},
+                                               sub {chomp});
+            }
+
 	    next unless defined($sensor_values);
 
 	    my %value = (address => $address);
@@ -1846,7 +1856,7 @@ sub print_device_status {
 
 	@attributes = ('address', sort @attributes);
 
-	tabulate('Hardware monitors',
+	tabulate('Hardware monitors (Sensors)',
 		 undef,
 		 \@attributes,
 		 \@values,
