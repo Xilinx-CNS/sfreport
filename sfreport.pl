@@ -902,6 +902,7 @@ sub print_system_summary {
       
 	    $meminfo_file->close();
 	    push @attributes, ('Total Physical Memory',
+			       'Free Physical Memory',
 			       'Available Physical Memory',
 			       'Total Virtual Memory',
 			       'Available Virtual Memory',
@@ -909,6 +910,7 @@ sub print_system_summary {
 	    push @value, map(sprintf('%d MB', $_ / 1024),
 			     $meminfo{MemTotal},
 			     $meminfo{MemFree},
+			     $meminfo{MemAvailable},
 			     # Count all physical memory and swap
 			     # minus kernel allocations as virtual
 			     # memory.  Assume kernel code and static
