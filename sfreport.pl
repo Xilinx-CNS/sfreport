@@ -1805,11 +1805,12 @@ sub print_device_status {
 	    my $sensor_values;
 
 	    # Check whether this is a grandchild of a device handled
-	    # by sfc (the I2C adapter is a child of the PCI device and
-	    # the hardware monitor is a child of I2C adapter).
+	    # by sfc or xilinx_efct (the I2C adapter is a child of the PCI
+            # device and the hardware monitor is a child of I2C adapter).
 	    my $grandparent_driver = readlink("$device_dir/driver");
 	    next unless defined($grandparent_driver)
-		&& $grandparent_driver =~ m|/sfc$|;
+		&& ($grandparent_driver =~ m|/sfc$| ||
+                  $grandparent_driver =~ m|/xilinx_efct$|);
 
 	    # Use last three components of the device path as its address.
 	    # That should be the PCI device's address, the I2C adapter
