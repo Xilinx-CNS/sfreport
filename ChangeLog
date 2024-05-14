@@ -1,4 +1,6 @@
 v4.16.1
+
+SWUTILS-934: Add X3 NICs to collected sensor data
 SWUTILS-929: Fixed Hardware monitors not reporting output
 SWUTILS-930: Added ethtool headings for individual commands
 SWUTILS-930: Add 'ethtool --show-fec' output to sfreport
