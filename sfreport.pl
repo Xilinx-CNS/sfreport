@@ -1771,10 +1771,16 @@ sub print_device_status {
 		$n_cpus = @fields;
 	    } elsif ($fields[1] =~ /^\d+$/) {
 		# Check whether any of the interrupts sources matches
-		# an interface name, possibly with a per-channel suffix.
-		my @sources = split(/, /, $fields[-1]);
-		map(s/(?:(?:-(.*)))$//, @sources);
-		if (grep(exists($sfc_drvinfo->{$_}) | /^onld$/, @sources)) {
+		# Interrupts can have suffix with one or more dash
+		# (e.g. -1, -rx-1, -ptp) but interface name could also contain
+		# a dash.  Test suffixes to see if anything matches an interface
+		my @ifname_parts = split(/-/, $fields[-1]);
+		my $ifname = shift(@ifname_parts);
+		while (scalar @ifname_parts and not exists $sfc_drvinfo->{$ifname}
+					    and $ifname ne "onld") {
+			$ifname .= '-' . shift(@ifname_parts);
+		}
+		if (exists($sfc_drvinfo->{$ifname}) or $ifname eq "onld") {
 		    my $irq = $fields[0];
 		    my $affinity = read_file("/proc/irq/$irq/smp_affinity");
 		    chomp($affinity) if defined($affinity);
