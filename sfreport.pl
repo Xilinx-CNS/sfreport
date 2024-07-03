@@ -2516,7 +2516,7 @@ sub print_x3_debug_info_compat {
     # log or the interface statistics.
     my @debug_dirs = find_x3_debug_dir();
 
-    print_heading('X3 Debug Info', 'x3debug');
+    print_heading('X3 Debug Info', 'x3debug', 'hide');
     foreach my $debug_dir (@debug_dirs) {
         my $base_dir = "$debug_dir";
         if (my $card_dirs = list_dir($debug_dir)) {
