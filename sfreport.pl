@@ -892,6 +892,13 @@ sub print_system_summary {
 	push @value, $bios_id;
     }
     if ($os_type eq 'Linux') {
+	push @attributes, 'SELinux';
+	my $selinux_status = 'Disabled';
+	my $selinux_enforce = read_file("/sys/fs/selinux/enforce");
+	if (defined($selinux_enforce)) {
+        	$selinux_status = $selinux_enforce == '1' ? 'Enforcing' : 'Permissive';
+	}
+	push @value, $selinux_status;
 	if (my $meminfo_file = new FileHandle('/proc/meminfo', 'r')) {
 	    my %meminfo = ();
 	    while (<$meminfo_file>) {
