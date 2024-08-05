@@ -1880,8 +1880,8 @@ sub print_device_status {
     }
 
 
-    if (my $dmesg_file = new FileHandle('dmesg --ctime 2>/dev/null |')) {
-        $_ = `dmesg --ctime 2>/dev/null`; 
+    if (my $dmesg_file = new FileHandle('dmesg -dxT 2>/dev/null |')) {
+        $_ = `dmesg -dxT 2>/dev/null`; 
         if ($?!=0) {
             $dmesg_file->close();
             $dmesg_file = new FileHandle('dmesg |');
