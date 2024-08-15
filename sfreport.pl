@@ -622,6 +622,7 @@ sub find_x3_debug_dir {
 
 sub get_sfc_drvinfo {
     my %sfc_drvinfo;
+    my $sfc_present = 0;
     if (my $list = list_dir('/sys/class/net')) {
 	for my $iface_name (@$list) {
 	    my $drvinfo = Ethtool::do_cmd(
@@ -630,6 +631,12 @@ sub get_sfc_drvinfo {
 		next unless defined($drvinfo);
 		if ($drvinfo->driver eq 'sfc' || $drvinfo->driver eq 'sfc_ef100' || $drvinfo->driver eq 'xilinx_efct') {
 		$sfc_drvinfo{$iface_name} = $drvinfo;
+	    }
+        if ($drvinfo->driver eq 'sfc' && !(my $test = new FileHandle("sfupdate 2>&1 |")) && !($sfc_present)) {
+            STDERR->print("WARNING: Unable to run sfutils (sfkey, sfboot) commands while sfc driver is loaded.\n"
+	                    ."Please make sure the Solarflare Linux Utilities package is installed.\n"
+                        ."NIC configuration (sfboot) and licensing information (sfkey) are unavailable.\n");
+            $sfc_present = 1;
 	    }
 	}
     }
