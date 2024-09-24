@@ -505,6 +505,15 @@ sub print_footer {
   }
 }
 
+sub print_reference {
+    my $text = shift;
+    my $id = shift;
+    if ($out_format == format_html) {
+        $out_file->print("<a href='#$id'>$text</a>");
+        $out_file->print("</div>\n");
+    }
+}
+
 sub print_bold {
     my $text = shift;
         if ($out_format == format_html) {
@@ -2054,18 +2063,29 @@ sub print_net_status {
     }
 
     if (my $iface_list = list_dir('/sys/class/net')) {
-        print_heading('Ifconfig', 'ifconfig');
-        for my $iface_name (@$iface_list) {
-            for my $command ('ifconfig') {
-                if (my $report = `$command '$iface_name' 2>/dev/null`) {
+        if (my $check_ifconfig = new FileHandle('ifconfig 2>&1 |')) {
+            print_heading('Network configuration (ifconfig)', 'Network_configuration');
+            for my $iface_name (sort(@$iface_list)) {
+                if (my $report = `ifconfig '$iface_name' 2>/dev/null`) {
                     print_heading("Network configuration for $iface_name"
-                                  ." ($command)");
+                                    ." (ifconfig)");
                     print_preformatted($report);
-                    last;
                 }
             }
+            print_footer('Network_configuration');
+            close $check_ifconfig;
         }
-        print_footer('ifconfig');
+        elsif (my $check_ip_addr = new FileHandle('ip addr 2>&1 |')) {
+            print_heading('Network configuration (ip addr show)', 'Network_configuration');
+            print_text('Ifconfig unavailable see ');
+            print_reference('ip addr show','ip_addr');
+            print_footer('Network_configuration');
+            close $check_ip_addr;
+        }
+        else {
+            STDERR->print("WARNING: ifconfig and ip addr unavailble.\n"
+            ."Network configuration is unavailable.\n");
+        }
     }
 
     print_heading('Network Configuration Scripts', 'netcfg');
@@ -2119,71 +2139,144 @@ tabulate('TCP (IPv4) settings',
 	     values_format_default,
 	     'tcp_cfg');
 
-    if (my $netstat_file = new FileHandle('netstat -s 2>/dev/null |')) {
-	my $netstat_output;
-	while (<$netstat_file>) {
-	    $netstat_output .= $_;
+	my $ss_present = 1;
+    if (my $ss_file = new FileHandle('ss -s 2>&1 |')) {
+        my $ss_output;
+        while (<$ss_file>) {
+            $ss_output .= $_;
+        }
+        print_heading('Network stats (ss -s)', 'socket_stats');
+        print_preformatted($ss_output);
+        if (my $ss_file = new FileHandle('ss -t -u -H 2>&1 |')) {
+            my @values = ();
+            while (<$ss_file>) {
+                my ($netid, $state, $recvq, $sendq, $local_address_port,
+                    $peer_address_port, $process) = split /\s+/;
+                push @values, [$netid, $state, $recvq, $sendq, $local_address_port,
+                    $peer_address_port, $process]
+            }
+            tabulate('TCP and UDP Sockets (ss -u -t)',
+                'ss_tcp_udp_stats',
+                ['Netid', 'State', 'Recv-Q', 'Send-Q', 'Local_Address:Port',
+                 'Peer Address:Port', 'Process'],
+                \@values,
+                orient_horiz);
+        }
+        print_footer('socket_stats');
+        close $ss_file;
 	}
-	print_heading('Network statistics (netstat -s)', 'netstat');
-	print_preformatted($netstat_output);
-  print_footer('netstat');
+    else {
+        $ss_present = 0;
+    }
+    if (my $netstat_file = new FileHandle('netstat -s 2>&1 |')) {
+        my $netstat_output;
+        while (<$netstat_file>) {
+            $netstat_output .= $_;
+        }
+        print_heading($ss_present ? 'Netstat (netstat -s)' : 'Network stats (netstat -s)', $ss_present ? 'netstat' : 'socket_stats', $ss_present);
+        print_preformatted($netstat_output);
+        print_footer('netstat');
+        close $netstat_file;
+	}
+	elsif (!($ss_present)) {
+        STDERR->print("WARNING: netstat and ss unavailble.\n"
+                    ."Network statistics are unavailable.\n");
+	}
+
+    my $neigh_present = 1;
+    if (my $neighbor_file = new FileHandle('ip -s neigh 2>&1 |')) {
+        my $neigh_text = ();
+        while (<$neighbor_file>) {
+            $neigh_text .= $_;
+        }
+        print_heading("ARP cache (ip neighbor)", "ip_neighbor");
+        print_preformatted($neigh_text);
+        print_footer("ip_neighbor");
+        close $neighbor_file;
+    }
+    else {
+        $neigh_present = 0;
+    }
+    if (my $arp_file = new FileHandle('arp -n 2>&1 |')) {
+        my @values = ();
+        while (<$arp_file>) {
+            next if $. == 1;
+            my ($ip_addr, $hw_type, $mac_addr, $flags, $iface) = split /\s+/;
+            push @values, [$ip_addr, $mac_addr, $flags, $iface]
+            if $hw_type eq 'ether';
+        }
+        tabulate('ARP cache (arp -n)',
+            'arp_cache',
+            ['ip_address', 'mac_address', 'flags', 'iface_name'],
+            \@values,
+            orient_horiz,
+            undef,
+            'arp_cache',
+            $neigh_present ? 1 : 0
+            );
+        close $arp_file;
+    }
+    elsif (!($neigh_present)) {
+        STDERR->print("WARNING: arp and ip neighbour unavailble.\n"
+		."Arp tables are unavailable.\n");
     }
 
-    if (my $arp_file = new FileHandle('arp -n 2>/dev/null |')) {
-	my @values = ();
-	while (<$arp_file>) {
-	    next if $. == 1;
-	    my ($ip_addr, $hw_type, $mac_addr, $flags, $iface) = split /\s+/;
-	    push @values, [$ip_addr, $mac_addr, $flags, $iface]
-		if $hw_type eq 'ether';
-	}
-	tabulate('ARP cache',
-		 'arp_cache',
-		 ['ip_address', 'mac_address', 'flags', 'iface_name'],
-		 \@values,
-		 orient_horiz);
+    my $ip_route_present = 1;
+    if (my $route_file = new FileHandle('ip route show table all 2>&1 |')) {
+        my $route_text = ();
+        while (<$route_file>) {
+            $route_text .= $_;
+        }
+        print_heading('Full Routing table (ip route show table all)', 'routing');
+        print_preformatted($route_text);
+        print_footer('routing');
     }
-
-    if (my $route_file = new FileHandle('route -A inet -n 2>/dev/null |')) {
+    else {
+        $ip_route_present = 0;
+    }
+    if (my $ip_route_file = new FileHandle('route -A inet -n 2>&1 |')) {
 	my @values = ();
-	while (<$route_file>) {
-	    next if $. <= 2;
-	    my ($dest, $gw, $mask, $flags, $metric, undef, undef, $iface) =
-		split /\s+/;
-	    my $prefix_len = decode_ipv4_netmask(parse_ipv4($mask));
-	    push @values, ["$dest/$prefix_len", $gw, $flags, $metric, $iface];
-	}
-	tabulate('Routing table (IPv4)',
-		 'route_ipv4',
-		 ['dest_address', 'gateway_address', 'flags', 'metric',
-		  'iface_name'],
-		 \@values,
-		 orient_horiz);
+        while (<$ip_route_file>) {
+            next if $. <= 2;
+            my ($dest, $gw, $mask, $flags, $metric, undef, undef, $iface) =
+            split /\s+/;
+            my $prefix_len = decode_ipv4_netmask(parse_ipv4($mask));
+            push @values, ["$dest/$prefix_len", $gw, $flags, $metric, $iface];
+        }
+        tabulate('Routing table (IPv4) (route -A inet -n)',
+            'route_ipv4',
+            ['dest_address', 'gateway_address', 'flags', 'metric',
+            'iface_name'],
+            \@values,
+            orient_horiz,
+            undef,
+            'route_ipv4',
+            $ip_route_present ? 1 : 0);
+        close $ip_route_file;
+    }
+    elsif (!($ip_route_present)) {
+        STDERR->print("WARNING: route and ip route unavailble.\n"
+		."Routing information is unavailable.\n");
     }
 
     if (my $route_file = new FileHandle('route -A inet6 -n 2>/dev/null |')) {
-	my @values = ();
-	while (<$route_file>) {
-	    next if $. <= 2;
-	    my ($dest, $gw, $flags, $metric, undef, undef, $iface) =
-		split /\s+/;
-	    push @values, [$dest, $gw, $flags, $metric, $iface];
-	}
-	tabulate('Routing table (IPv6)',
-		 'route_ipv6',
-		 ['dest_address', 'gateway_address', 'flags', 'metric',
-		  'iface_name'],
-		 \@values,
-		 orient_horiz);
-    }
-
-    if (my $route_file = new FileHandle("ip route show table all 2>&1 |")) {
-        my $output = '';
+        my @values = ();
         while (<$route_file>) {
-            $output .= $_;
+            next if $. <= 2;
+            my ($dest, $gw, $flags, $metric, undef, undef, $iface) =
+            split /\s+/;
+            push @values, [$dest, $gw, $flags, $metric, $iface];
         }
-        print_heading('Full Routing table (ip route show table all)');
-        print_preformatted($output);
+        tabulate('Routing table (IPv6) (route -A inet6 -n)',
+            'route_ipv6',
+            ['dest_address', 'gateway_address', 'flags', 'metric',
+            'iface_name'],
+            \@values,
+            orient_horiz,
+            undef,
+            'route_ipv6',
+            $ip_route_present ? 1 : 0);
+        close $route_file;
     }
    
     if (my $route_file = new FileHandle("ip rule show 2>&1 |")) {
@@ -2226,8 +2319,9 @@ tabulate('TCP (IPv4) settings',
         while (<$addr_file>) {
             $output .= $_;
         }
-        print_heading('ip addr show');
+        print_heading('ip addr show', 'ip_addr');
         print_preformatted($output);
+        print_footer('ip_addr');
     }
 
     for my $bond_dir ('/proc/net/bonding') {
@@ -3387,7 +3481,7 @@ if ($out_format == format_html) {
       <li><a href='#ethtool'>Interface stats</a>
       <li><a href='#irq'>Interrupts</a>
       <li><a href='#mod_params'>Module Parameters</a>
-      <li><a href='#netstat'>Netstat</a>
+      <li><a href='#socket_stats'>Socket statistics</a>
       <li><a href='#sfboot'>Sfboot</a>
       <li><a href='#sfcdebug'>SFC Debug Info</a>
       <li><a href='#x3debug'>X3 Debug Info</a>
