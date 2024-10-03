@@ -3088,7 +3088,7 @@ if ($out_format != format_minimal) {
         $out_file = *STDOUT{IO};
         $out_format = format_text;
     } else {
-        $out_file = new FileHandle($out_path, 'w') or die "open: $!";
+        $out_file = new FileHandle($out_path, 'w') or die "No write permissions on output directory.\nopen: $!";
         if ($out_path =~ /\.html?$/) {
             $out_format = format_html;
         } else {
