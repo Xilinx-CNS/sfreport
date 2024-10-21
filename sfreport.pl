@@ -105,7 +105,9 @@ my %interest_rules =
      sfc_eventqueue => [['n_rx_frm_trunc != 0', interest_perf],
 			['n_rx_ip_hdr_chksum_err != 0', interest_badpkt],
 			['n_rx_tcp_udp_chksum_err != 0', interest_badpkt],
-			['n_rx_overlength != 0', interest_badpkt]]);
+			['n_rx_overlength != 0', interest_badpkt]],
+     pci_device_sfc => [['device_id eq "10ee:5086"', interest_warn],
+			['device_id eq "10ee:5074"', interest_warn]]);
 
 # Extend $interest_rules{'net_stats_sfc'} to have port_ variants
 my @orig_net_stats_sfc = @{$interest_rules{'net_stats_sfc'}};
@@ -3011,9 +3013,13 @@ sub apply_interest_rules {
 	    my ($condition, $int_type) = @$rule;
 	    my @tokens = split / /, $condition;
 	    my $left_value = $value->{$tokens[0]};
-	    my $right_value =
-		$tokens[2] =~ /^-?\d/ ? $tokens[2] : $value->{$tokens[2]};
+        my $right_value_may_be_numeric = POSIX::strtod($tokens[2]);
+        my $right_value =
+        $right_value_may_be_numeric ? ($tokens[2] =~ /^-?\d/ ? $tokens[2] : $value->{$tokens[2]}) : $tokens[2];
 	    next unless defined($left_value) && defined($right_value);
+        if (!($right_value_may_be_numeric)){
+            $left_value = "\"" . $left_value . "\"";
+        }
 	    if (eval($left_value . ${tokens[1]} . $right_value)) {
  		push @interesting_stuff, ["$condition ($left_value)", $int_type];
 		$result->{$tokens[0]} = [$int_type, $#interesting_stuff];
