@@ -106,7 +106,9 @@ my %interest_rules =
      sfc_eventqueue => [['n_rx_frm_trunc != 0', interest_perf],
 			['n_rx_ip_hdr_chksum_err != 0', interest_badpkt],
 			['n_rx_tcp_udp_chksum_err != 0', interest_badpkt],
-			['n_rx_overlength != 0', interest_badpkt]]);
+            ['n_rx_overlength != 0', interest_badpkt]],
+     interesting_devices => [['device_id eq "10ee:5086"', interest_warn],
+            ['device_id eq "10ee:5074"', interest_warn]]);
 
 # Extend $interest_rules{'net_stats_sfc'} to have port_ variants
 my @orig_net_stats_sfc = @{$interest_rules{'net_stats_sfc'}};
@@ -1506,14 +1508,18 @@ sub print_device_status {
     # Identify and report the devices we're interested in.
     my %bridge_devices;
     my %sfc_devices;
+    my %interesting_devices;
     for my $address (keys(%$devices)) {
 	my $device = $devices->{$address};
 	if ($device->CLASS_DEVICE == 0x0604) {
 	    $bridge_devices{$address} = $device;
 	} elsif ($device->VENDOR_ID == EFX_VENDID_SFC) {
 	    $sfc_devices{$address} = $device;
-	} elsif ($device->VENDOR_ID == EFX_VENDID_XILINX && $device->CLASS_DEVICE == 0x200) {
-	    $sfc_devices{$address} = $device;
+    } elsif ($device->VENDOR_ID == EFX_VENDID_XILINX) {
+        if ($device->CLASS_DEVICE == 0x200){
+          $sfc_devices{$address} = $device;}
+        elsif ($device->DEVICE_ID == 0x5086 || $device->DEVICE_ID == 0x5074){
+          $interesting_devices{$address} = $device;}
 	}
     }
     tabulate('PCI bridge devices',
@@ -1557,6 +1563,30 @@ sub print_device_status {
 		    negotiated_link_width => $_->NEGOTIATED_LINK_WIDTH,
                     turbo => get_turbo_status($_->address)}}
 		  values(%sfc_devices))]);
+    if (keys %interesting_devices) {
+        tabulate('Other Noteworthy PCI devices',
+            'interesting_devices',
+            ['address', 'device_id', 'revision', 'subsystem_id',
+            'max_payload_size_supported', 'max_payload_size',
+            'max_read_request_size', 'maximum_link_width',
+            'negotiated_link_width', 'turbo'],
+            [map({{address => $_->address,
+                device_id => sprintf('%04x:%04x',
+                        $_->VENDOR_ID, $_->DEVICE_ID),
+                revision => sprintf('%02x', $_->REVISION),
+                subsystem_id => sprintf('%04x:%04x',
+                            $_->SUBSYSTEM_VENDOR_ID,
+                            $_->SUBSYSTEM_ID),
+                max_payload_size_supported =>
+                $_->MAX_PAYLOAD_SIZE_SUPPORTED,
+                max_payload_size => $_->MAX_PAYLOAD_SIZE,
+                max_read_request_size => $_->MAX_READ_REQUEST_SIZE,
+                maximum_link_width => $_->MAXIMUM_LINK_WIDTH,
+                negotiated_link_width => $_->NEGOTIATED_LINK_WIDTH,
+                        turbo => get_turbo_status($_->address)}}
+            values(%interesting_devices))]);
+    }
+
   print_footer('hw');
   
   print_heading("PCI configuration", "pci_config", 'hide');
@@ -3113,10 +3143,28 @@ sub apply_interest_rules {
 	for my $rule (@{$interest_rules{$type_name}}) {
 	    my ($condition, $int_type) = @$rule;
 	    my @tokens = split / /, $condition;
-	    my $left_value = $value->{$tokens[0]};
-	    my $right_value =
-		$tokens[2] =~ /^-?\d/ ? $tokens[2] : $value->{$tokens[2]};
-	    next unless defined($left_value) && defined($right_value);
+        my $right_value;
+        my $left_value;
+
+        next unless defined($value->{$tokens[0]});
+        $right_value = $tokens[2];
+        #if the right value is not a number (incl. hex 0x notation), it may
+        #be a key in a key value pair
+        if (!($tokens[2] =~ /^(-)?(0x[0-9a-fA-F]+|\d+(\.\d+)?)$/)) {
+            if (defined($value->{$tokens[2]})) {
+                $right_value = $value->{$tokens[2]};
+            }
+            elsif (defined($value->{"port_" . $tokens[2]})) {
+                $right_value = $value->{"port_" . $tokens[2]};
+            }
+        }
+        next unless defined($right_value);
+        #if the right value is STILL not a number, we should evaluate the
+        #left side as a string also
+        $left_value = $right_value =~ /^(-)?(0x[0-9a-fA-F]+|\d+(\.\d+)?)$/ ?
+        $value->{$tokens[0]} : "\"" . $value->{$tokens[0]} . "\"";
+        next unless defined($left_value);
+
 	    if (eval($left_value . ${tokens[1]} . $right_value)) {
  		push @interesting_stuff, ["$condition ($left_value)", $int_type];
 		$result->{$tokens[0]} = [$int_type, $#interesting_stuff];
