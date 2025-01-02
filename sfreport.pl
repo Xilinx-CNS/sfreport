@@ -1558,7 +1558,14 @@ sub print_device_status {
                     turbo => get_turbo_status($_->address)}}
 		  values(%sfc_devices))]);
   print_footer('hw');
-	print_heading("PCI configuration", "pci_config", 'hide');
+  
+  print_heading("PCI configuration", "pci_config", 'hide');
+     
+    if (my $pcieslot_file = `dmidecode -t slot |grep -b10 'PCI Express' 2>/dev/null`) {
+        print_heading('PCIe slots info ');
+        print_preformatted($pcieslot_file);
+    }
+    
     for my $address (keys(%bridge_devices), keys(%sfc_devices)) {
 	print_heading("PCI configuration space for $address");
 	# Emulate lspci -x.
