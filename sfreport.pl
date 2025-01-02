@@ -2218,19 +2218,14 @@ tabulate('TCP (IPv4) settings',
 	    print_preformatted($devlink_file);
 	}
 
-	if (my $devlink_params_file = `devlink dev param show pci/$bus_info name ct_thresh 2>/dev/null`) {
-	    print_heading("Devlink ct_thresh Param");
-	    print_preformatted($devlink_params_file);
-	}
-
-	if (my $devlink_params_file = `devlink dev param show pci/$bus_info name dist_layout 2>/dev/null`) {
-	    print_heading("Devlink dist_layout Param");
-	    print_preformatted($devlink_params_file);
-	}
-	if (my $devlink_params_file = `devlink dev param show pci/$bus_info name separated_cpu 2>/dev/null`) {
-	    print_heading("Devlink separated_cpu Param");
-	    print_preformatted($devlink_params_file);
-	}
+        for my $param('ct_thresh', 'dist_layout', 'separated_cpu',
+          'irq_adapt_irqs', 'irq_adapt_low_thresh', 'irq_adapt_high_thresh',
+          'rx_merge_timeout', 'tx_merge_timeout', 'num_port') {
+          if (my $devlink_params_file = `devlink dev param show pci/$bus_info name $param 2>/dev/null`) {
+              print_heading("Devlink $param Param");
+              print_preformatted($devlink_params_file);
+          }
+        }
     }
 
     if (my $uefi_info_x3 = `lspci -d 10ee:5084 -vvv | egrep 'Ethernet|Expansion' 2>/dev/null`) {
