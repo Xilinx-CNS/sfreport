@@ -2236,8 +2236,13 @@ tabulate('TCP (IPv4) settings',
 	}
     }
 
+    #For devlink dev params we want to filter down to the SFC / EFCT PCI IDs
+    #in order to not pollute output. Therefore, we collect these PCI ID before
+    #running the command.
+    my @pci_ids;
     for my $iface_name (sort(keys(%$sfc_drvinfo))) {
         my $bus_info = $sfc_drvinfo->{$iface_name}->bus_info;
+        push(@pci_ids, $bus_info) if(! grep(/$bus_info/, @pci_ids));
 
 	if (my $versions_file = `cat /sys/class/net/$iface_name/device/versions 2>/dev/null`) {
 	    print_heading("Version information for $iface_name (/sys/class/net/$iface_name/device/versions)");
@@ -2246,20 +2251,56 @@ tabulate('TCP (IPv4) settings',
 	    print_heading("Version information for $iface_name (devlink dev info pci/$bus_info)");
 	    print_preformatted($devlink_file);
 	}
+    }
 
-	if (my $devlink_params_file = `devlink dev param show pci/$bus_info name ct_thresh 2>/dev/null`) {
-	    print_heading("Devlink ct_thresh Param");
-	    print_preformatted($devlink_params_file);
-	}
+    #Collect all devlink params for all PCI devices into hash with parameter
+    #name as the key. So for each parameter name it will store the pci_ids
+    #value or N/A.
+    #
+    #For future reference, regex captures PCIE address and parameter output.
+    #First capture group is PCI ID 'pci/{12 characters}' e.g. 0000:01.00.0.
+    #Next capture groups is all text up to the next instance of 'pci/' or EOF($)
+    #This captures all parameters and values for that PCIE address.
+    #
+    #Return to @devparams is PCI ID in first index into array, then the
+    #parameters for that PCI ID repeated for all PCI IDs.
+    my (@devparams, $params);
+    my %devlink_params;
+    if ($params = `devlink dev param  2>/dev/null`) {
+        @devparams = ($params =~ /(?:pci\/(.{12}):\n)((?:.*\s)*?)(?=pci\/|$)/g);
+        my ($pci_id,$dev_params);
+        while (($pci_id, $dev_params) = splice(@devparams, 0, 2)) {
+            if (grep(/$pci_id/, @pci_ids)) {
+                my $key;
+                #We are now working dev link dev params output. Capturing the name and
+                #the value for a table. The type and cmode can be seen in RAW output.
+                while ($dev_params =~ /(?:name )(.*)(?: .* .*\s)|(?:cmode )(?:.*)(?: .* )(.*)/g){
+                    $key = $1 if defined($1);
+                    $devlink_params{$key}{$pci_id} = $2 if defined($2);
+                }
+            }
+        }
+        @devparams = ();
+        #This just formats above hash for table output.
+        for my $param (sort(keys(%devlink_params))){
+            my @paramvalues;
+            for (@pci_ids) {
+                push(@paramvalues, $devlink_params{$param}{$_});
+            }
+            push(@devparams, [$param,  @paramvalues]);
+        }
+        tabulate("Devlink dev params",
+                 'devlink_dev_parmas',
+                 ['name', @pci_ids],
+                 \@devparams,
+                 orient_horiz);
 
-	if (my $devlink_params_file = `devlink dev param show pci/$bus_info name dist_layout 2>/dev/null`) {
-	    print_heading("Devlink dist_layout Param");
-	    print_preformatted($devlink_params_file);
-	}
-	if (my $devlink_params_file = `devlink dev param show pci/$bus_info name separated_cpu 2>/dev/null`) {
-	    print_heading("Devlink separated_cpu Param");
-	    print_preformatted($devlink_params_file);
-	}
+        #Also output the raw 'devlink dev params' output for referencing the
+        #parameter types and configuration modes. These are not included in the
+        #tabulated output but may be useful.
+        print_heading("Devlink dev params: Raw Output", 'devlink_param_raw', 'hide');
+        print_preformatted($params);
+        print_footer('devlink_param_raw');
     }
 
     if (my $uefi_info_x3 = `lspci -d 10ee:5084 -vvv | egrep 'Ethernet|Expansion' 2>/dev/null`) {
