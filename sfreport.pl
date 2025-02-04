@@ -2794,10 +2794,10 @@ sub print_nic_type {
     foreach my $line (@data){
         if($line->[2]){
         if( grep(/^$line->[2]/, @tmp) ){
-        if( ($line->[1] eq "082C") or ($line->[1] eq "082D")){
+        if( ($line->[1] eq "802C") or ($line->[1] eq "802D")){
             $out_file->print("<p>Note: NIC with Serial number: $line->[2] is a Dell version NIC </p>");
         }
-        elsif(($line->[1] eq "082F")){
+        elsif(($line->[1] eq "802F")){
             $out_file->print("<p>Note: NIC with Serial number: $line->[2] is a Lenovo version NIC </p>");
         }}
         push(@tmp,$line->[2]);
