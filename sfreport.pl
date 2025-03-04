@@ -1847,12 +1847,12 @@ sub print_device_status {
 	    $address =~ s|.*/([^/]*)$|$1|;
             if ( my $temp_file = `ls $device_dir |grep temp`){
                 $sensor_values = read_dir_files($device_dir,
-                                               sub {/^(in|temp)\d+_/},
+                                               sub {/^(in|temp|curr)\d+_/},
                                                sub {chomp});
             }
             else {
                 $sensor_values = read_dir_files($device_dir1,
-                                               sub {/^(in|temp)\d+_/},
+                                               sub {/^(in|temp|curr)\d+_/},
                                                sub {chomp});
             }
 
@@ -1875,6 +1875,8 @@ sub print_device_status {
                             $attr_value = sprintf('%d.%03d V', $whole, $milli);
                         } elsif ($attr =~ /^temp/) {
                             $attr_value = sprintf('%d degC', $whole);
+                        } elsif ($attr =~ /^curr/) {
+                            $attr_value = sprintf('%d.%03d A', $whole, $milli);
                         }
                     }
                 }
