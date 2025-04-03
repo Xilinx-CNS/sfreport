@@ -24,7 +24,7 @@ use constant driver_name_re => 'sfc\w*|onload|xilinx_efct';
 use constant rpm_name_prefixes =>
     'kernel-module-sfc-', 'kmod-solarflare-sfc-', 'sfc-dkms', 'sfutils', 'onload', 'openonload', 'enterpriseonload', 'solar_capture', 'sfptp',
     'kernel-module-xilinx-efct', 'tcpdirect';
-use constant deb_name_prefixes => 'sfc-modules-', 'xilinx-efct', 'onload', 'enterpriseonload', 'tcpdirect';
+use constant deb_name_prefixes => 'sfc-modules-', 'xilinx-efct', 'onload', 'enterpriseonload', 'tcpdirect', 'sfptp';
 use constant EFX_VENDID_SFC => 0x1924;
 use constant EFX_VENDID_XILINX => 0x10ee;
 
