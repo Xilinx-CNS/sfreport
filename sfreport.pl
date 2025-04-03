@@ -634,9 +634,8 @@ sub get_sfc_drvinfo {
 		$sfc_drvinfo{$iface_name} = $drvinfo;
 	    }
         if ($drvinfo->driver eq 'sfc' && !(my $test = new FileHandle("sfupdate 2>&1 |")) && !($sfc_present)) {
-            STDERR->print("WARNING: Unable to run sfutils (sfkey, sfboot) commands while sfc driver is loaded.\n"
-	                    ."Please make sure the Solarflare Linux Utilities package is installed.\n"
-                        ."NIC configuration (sfboot) and licensing information (sfkey) are unavailable.\n");
+            STDERR->print("INFO: Unable to run sfutils (sfkey, sfboot) commands while sfc driver is loaded. "
+                        ."X2xxx and 8xxx series NIC configuration and licensing information are unavailable.\n");
             $sfc_present = 1;
 	    }
 	}
