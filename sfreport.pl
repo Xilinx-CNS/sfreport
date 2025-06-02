@@ -2871,6 +2871,52 @@ sub print_sfc_vpd {
 	     values_format_default, 'vitalpd');
 } # print_sfc_vpd
 
+sub get_aspm_cap {
+    my $sfc_drvinfo = shift;
+    my @attributes = shift;
+    my %return_values = ();
+    my $aspm_warn = 0;
+
+    for my $key (keys(%$sfc_drvinfo)) {
+        my $cmd = sprintf("lspci -s %s -vvv | grep -E -e 'LnkCtl:.*ASPM.*Enabled;' -e 'Capabilities: <access denied>' -e 'LnkCtl:.*ASPM.*Disabled;' 2>/dev/null", $sfc_drvinfo->{$key}->bus_info);
+        my $aspm_setting = `$cmd`;
+        my %values = ();
+
+        if ($aspm_setting =~ /ASPM L.*Enabled/ ) {
+            $values{"ASPM"} = "Enabled";
+            if (! $aspm_warn) {
+                push @interesting_stuff, ["ASPM is enabled which can cause increased latency - check BIOS and Kernel command line", interest_perf];
+                $aspm_warn = 1;
+            }
+        } elsif ($aspm_setting =~ /ASPM Disabled/) {
+            $values{"ASPM"} = "Disabled";
+        } elsif ($aspm_setting =~ /Capabilities: <access denied>/) {
+            $values{"ASPM"} = "Access Denied!"
+        } else {
+            $values{"ASPM"} = "<N/A>"
+        }
+
+        $values{$key} = $key;
+        $return_values{$key} = \%values;
+    }
+
+    return %return_values;
+} # get_aspm_cap
+
+sub print_sfc_aspm_cap {
+    my ($sfc_drvinfo) = @_;
+
+    my @attributes = qw(address ASPM);
+    my %values = get_aspm_cap($sfc_drvinfo, @attributes);
+    my @data = map({[$sfc_drvinfo->{$_}->bus_info, 
+                            $values{$_}->{"ASPM"}]}
+                            keys(%$sfc_drvinfo));
+
+    tabulate('Active State Power Management (ASPM)', undef,
+        \@attributes, \@data, orient_vert,
+        values_format_default, 'aspm');
+} # print_sfc_aspm_cap
+
 sub print_interesting {
     print_heading('Summary of interesting values');
     if ($out_format == format_html) {
@@ -3247,6 +3293,7 @@ if ($out_format != format_minimal) {
     print_sfc_debug_info;
     check_x3_debug_info;
     print_sfc_vpd($devices, $sfc_drvinfo);
+    print_sfc_aspm_cap($sfc_drvinfo);
     print_mtd;
     print_aoe_status;
 
