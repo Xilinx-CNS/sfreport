@@ -2311,8 +2311,8 @@ tabulate('TCP (IPv4) settings',
         print_footer('devlink_param_raw');
     }
 
-    if (my $uefi_info_x3 = `lspci -d 10ee:5084 -vvv | egrep 'Ethernet|Expansion' 2>/dev/null`) {
-        print_heading("UEFI image used for x3 NIC (lspci -d 10ee:5084 -vvv | egrep 'Ethernet|Expansion')");
+    if (my $uefi_info_x3 = `lspci -d 10ee:5084 -vvv | grep -E 'Ethernet|Expansion' 2>/dev/null`) {
+        print_heading("UEFI image used for x3 NIC (lspci -d 10ee:5084 -vvv)");
         print_preformatted($uefi_info_x3);
     }
 
@@ -2366,7 +2366,7 @@ tabulate('TCP (IPv4) settings',
 	print_preformatted($output);
     }
 
-    if (my $rt_file = `ps -eLo pid,lwp,rtprio,policy,lastcpu,comm |egrep -i -v ' 99 | - '`) {
+    if (my $rt_file = `ps -eLo pid,lwp,rtprio,policy,lastcpu,comm |grep -E -i -v ' 99 | - '`) {
         print_heading('Real Time Priority (ps -eLo pid,lwp,rtprio,policy,lastcpu,comm)');
         print_preformatted($rt_file);
     }
