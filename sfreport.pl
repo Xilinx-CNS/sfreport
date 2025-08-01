@@ -108,7 +108,13 @@ my %interest_rules =
 			['n_rx_tcp_udp_chksum_err != 0', interest_badpkt],
             ['n_rx_overlength != 0', interest_badpkt]],
      interesting_devices => [['device_id eq "10ee:5086"', interest_warn],
-            ['device_id eq "10ee:5074"', interest_warn]]);
+            ['device_id eq "10ee:5074"', interest_warn]],
+     pci_errors => [['aer_dev_correctable_TOTAL_ERR_COR != 0', interest_warn],
+            ['aer_dev_fatal_TOTAL_ERR_FATAL != 0', interest_error],
+            ['aer_dev_nonfatal_TOTAL_ERR_NONFATAL != 0', interest_error],
+            ['aer_rootport_total_err_cor != 0', interest_warn],
+            ['aer_rootport_total_err_fatal != 0', interest_error],
+            ['aer_rootport_total_err_nonfatal != 0', interest_error]]);
 
 # Extend $interest_rules{'net_stats_sfc'} to have port_ variants
 my @orig_net_stats_sfc = @{$interest_rules{'net_stats_sfc'}};
@@ -321,8 +327,10 @@ my @interesting_stuff = ();
 #             if orient_vert, values are in columns
 # values_fmt  if values_format_pre, values are preformatted text
 #             if values_format_default, use default formatting
+# id          heading id
+# hidden      if the heading should be hidden by default
 sub tabulate {
-    my ($title, $type_name, $attributes, $values, $orientation, $values_fmt, $id) = @_;
+    my ($title, $type_name, $attributes, $values, $orientation, $values_fmt, $id, $hidden) = @_;
     my @col_widths;
     my @cell_texts;
     my @cell_interest;
@@ -347,7 +355,13 @@ sub tabulate {
     }
     for my $i (0..$#$values) {
 	my $value = $values->[$i];
-	my $value_interest = apply_interest_rules($type_name, $value);
+    my $context;
+    if (ref($value) eq 'HASH') {
+        $context = $value->{$attributes->[0]};
+    } elsif (ref($value) eq 'ARRAY') {
+        $context = $value->[0];
+    }
+	my $value_interest = apply_interest_rules($type_name, $value, $context);
 	for my $j (0..$#$attributes) {
 	    my $attr_value;
 	    if (ref($value) eq 'HASH') {
@@ -371,7 +385,7 @@ sub tabulate {
 	}
     }
 
-    print_heading($title, $id);
+    print_heading($title, $id, $hidden);
 
     if ($out_format == format_html) {
 	$out_file->print("    <table class="
@@ -1509,10 +1523,23 @@ sub print_device_status {
     my %bridge_devices;
     my %sfc_devices;
     my %interesting_devices;
+    my %sfc_root_ports;
     for my $address (keys(%$devices)) {
 	my $device = $devices->{$address};
 	if ($device->CLASS_DEVICE == 0x0604) {
 	    $bridge_devices{$address} = $device;
+        if (my $sub_device_list = list_dir("/sys/bus/pci/devices/$address")) {
+            for my $sub_device_addr (@$sub_device_list) {
+                if (my $sub_device = $devices->{$sub_device_addr}) {
+                    if ($sub_device->VENDOR_ID == EFX_VENDID_SFC || 
+                        ($sub_device->VENDOR_ID == EFX_VENDID_XILINX &&
+                         $sub_device->CLASS_DEVICE == 0x200)) {
+                        $sfc_root_ports{$address} = $device;     
+                        last;
+                    }
+                }
+            }
+        }
 	} elsif ($device->VENDOR_ID == EFX_VENDID_SFC) {
 	    $sfc_devices{$address} = $device;
     } elsif ($device->VENDOR_ID == EFX_VENDID_XILINX) {
@@ -1614,6 +1641,48 @@ sub print_device_status {
 	end_preformatted(0);
     }
   print_footer('pci_config' );
+
+  my @aer_error_names = ('Error_type');
+  my @aer_error_values = ();
+  my @aer_file_names = ('aer_dev_correctable', 'aer_dev_fatal', 'aer_dev_nonfatal',
+  'aer_rootport_total_err_cor', 'aer_rootport_total_err_fatal', 'aer_rootport_total_err_nonfatal');
+  for my $address (keys(%sfc_root_ports), keys(%sfc_devices)) {
+      my %pci_aer_errors = (Error_type => $address);
+      foreach my $aer_file_name (@aer_file_names) {
+        my $file_path = "/sys/bus/pci/devices/$address/$aer_file_name";
+        if (open my $fh, '<', $file_path) {
+            if ($aer_file_name =~ /^aer_dev_/) {
+                # Multi-line key-value files
+                while (my $line = <$fh>) {
+                    chomp $line;
+                    next unless $line =~ /^(\S+)\s+(\S+)/;
+                    my ($key, $value) = ($1, $2);
+                    $pci_aer_errors{"${aer_file_name}_$key"} = $value;
+                    push @aer_error_names, "${aer_file_name}_$key"
+                        unless grep { $_ eq "${aer_file_name}_$key" } @aer_error_names;
+                }
+            } elsif ($aer_file_name =~ /^aer_rootport_/) {
+                # Single-value files (rootport totals)
+                my $value = <$fh>;
+                chomp $value if defined $value;
+                $pci_aer_errors{$aer_file_name} = $value;
+                push @aer_error_names, $aer_file_name
+                    unless grep { $_ eq $aer_file_name } @aer_error_names;
+            }
+            close $fh;
+        }
+      }
+      push @aer_error_values, \%pci_aer_errors;
+  }
+
+    tabulate("PCI AER Errors",
+         'pci_errors',
+         \@aer_error_names,
+         \@aer_error_values,
+         orient_vert,
+         values_format_default,
+         'pci_errors',
+         1);
 
     my $modules_base = "/lib/modules/$os_release";
 
@@ -3138,7 +3207,7 @@ sub print_aoe_status {
 
 sub apply_interest_rules {
     my $result = {};
-    my ($type_name, $value) = @_;
+    my ($type_name, $value, $context) = @_;
     if (defined($type_name) && exists($interest_rules{$type_name})) {
 	for my $rule (@{$interest_rules{$type_name}}) {
 	    my ($condition, $int_type) = @$rule;
@@ -3166,8 +3235,10 @@ sub apply_interest_rules {
         next unless defined($left_value);
 
 	    if (eval($left_value . ${tokens[1]} . $right_value)) {
- 		push @interesting_stuff, ["$condition ($left_value)", $int_type];
-		$result->{$tokens[0]} = [$int_type, $#interesting_stuff];
+            my $message = "$condition ($left_value)";
+            $message = "$context - " . $message if defined $context && $context ne '';
+            push @interesting_stuff, [$message, $int_type];
+            $result->{$tokens[0]} = [$int_type, $#interesting_stuff];
 	    }
 	}
     }
