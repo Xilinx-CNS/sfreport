@@ -1,3 +1,29 @@
+v4.17.1
+SWUTILS-961: Suppress some no-perms errors
+SWUTILS-931: Add backup alternatives for depreciated Linux utilities
+SWUTILS-959: Add AER error information
+SWUTILS-903: Highlight X3 hybrid and PV variants
+SWUTILS-958: Report ASPM status for AMD/Solarflare cards
+        #37: Replace egrep with grep -E
+
+v4.17.0
+
+Added support for AMD Solarflare X4xxx Ethernet Adapters
+        #23: Report SELinux status
+SWUTILS-957: Add devlink health diagnose nvcfg
+SWUTILS-952: Detect if sfptpd is installed via deb
+SWUTILS-956: Reduce noise of missing sfutils warning
+SWUTILS-950: Add current sensors to table
+SWUTILS-945: Capture all Solarflare devlink params
+SWUTILS-833: Correcting the subsystem id of OEM boards
+SWUTILS-806: Include PCIe Slot/Gen info to sfreport 'dmidecode -t slot'
+SWUTILS-944: Detect if onload is installed via RPM or deb
+SWUTILS-918: Improve the error output message when the directory lacks write permissions
+SWUTILS-932: Warn if sfutils is missing while sfc driver is present
+SWUTILS-732: Updated sfreport dmesg -dxT to report timestamps and log level
+SWUTILS-939: Hide X3 Debug Info by default
+SWUTILS-935: Fix display of IRQs when interface name has hyphen
+
 v4.16.1
 
 SWUTILS-934: Add X3 NICs to collected sensor data
