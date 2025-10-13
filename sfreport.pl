@@ -1627,7 +1627,7 @@ sub print_device_status {
   
   print_heading("PCI configuration", "pci_config", 'hide');
      
-    if (my $pcieslot_file = `dmidecode -t slot |grep -b10 'PCI Express' 2>/dev/null`) {
+    if (my $pcieslot_file = `dmidecode -t slot 2>/dev/null | grep -b10 'PCI Express'`) {
         print_heading('PCIe slots info ');
         print_preformatted($pcieslot_file);
     }
@@ -2008,7 +2008,7 @@ sub print_device_status {
         $_ = `dmesg -dxT 2>/dev/null`; 
         if ($?!=0) {
             $dmesg_file->close();
-            $dmesg_file = new FileHandle('dmesg |');
+            $dmesg_file = new FileHandle('dmesg 2>/dev/null |');
         }
 	print_heading("Recent kernel messages about AMD Solarflare adapters"
 		      ." and drivers", "dmesg");
