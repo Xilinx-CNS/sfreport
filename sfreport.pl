@@ -51,7 +51,7 @@ my @interest_css_classes = ("error", "warn", "perf", "badpkt");
 my @interest_labels = ("Error", "Warning", "Performance Warning",
 		       "Bad Packet Warning");
 
-my $VERSION = "4.16.1";
+my $VERSION = "4.17.1";
 my $USER = "ROOT USER";
 my $DATE = localtime();
 my $UPTIME = '';
