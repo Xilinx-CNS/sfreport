@@ -2397,14 +2397,14 @@ tabulate('TCP (IPv4) settings',
         print_preformatted($aoed_file);
     }
 
-    my @stat_names = ('name');
+    my @stat_names = ('option');
     my @stat_values = ();
-
+    my @ethtool_options = ('', '-a', '-c', '-k', '-g', '-m', '-T', '-n', '--show-fec');
     for my $iface_name (sort keys(%iface_names)) {
 	# ethtool's default output is difficult to parse so
 	# include it (almost) verbatim.
-	my %ethtool_output;
-	for my $option ('', '-a', '-c', '-k', '-g', '-m', '-T', '-n', '--show-fec') {
+	my %ethtool_output = (option => $iface_name);
+	foreach my $option (@ethtool_options) {
 	    if (my $ethtool_file =
 		new FileHandle("ethtool $option '$iface_name' 2>/dev/null |")) {
 		while (<$ethtool_file>) {
@@ -2420,15 +2420,16 @@ tabulate('TCP (IPv4) settings',
 		}
 	    }
 	}
-	if (defined(keys %ethtool_output)) {
-	    print_heading("Ethernet settings for $iface_name (ethtool)", 'ethset_'.$iface_name);
-            for(sort(keys %ethtool_output)) {
-                print_heading("ethtool $_ $iface_name");
-                print_preformatted($ethtool_output{$_});
-            }
-      print_footer('ethset_'.$iface_name);
-	}
+    push @stat_values, \%ethtool_output;
     }
+    push @stat_names, @ethtool_options;
+
+    tabulate("Ethernet settings (ethtool)",
+	     "ethtool_commands",
+	     \@stat_names,
+	     \@stat_values,
+	     orient_vert,
+         values_format_pre);
 
     #For devlink dev params we want to filter down to the SFC / EFCT PCI IDs
     #in order to not pollute output. Therefore, we collect these PCI ID before
@@ -2524,6 +2525,8 @@ tabulate('TCP (IPv4) settings',
         print_preformatted($firmware_file);
     }
 
+    @stat_names = ('name');
+    @stat_values = ();
     for my $iface_name (sort (keys%$sfc_drvinfo)) {
 	# The additional statistics are regular so parse and re-
 	# tabulate them.
