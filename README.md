@@ -19,15 +19,15 @@ This information is intended for use by AMD Solarflare engineers but is recorded
 
 For the collection of full diagnostics information, the sfreport script should be run with root permissions. For example:
  $ sudo perl sfreport.pl
-The output of sfreport will be in html format. The filename will be in the format sfreport-'date'-'time'.html.
+The output of sfreport will be in html format. The filename will be in the format sfreport-'hostname'-'date'-'time'.html.
 
 ## Notes
 
 Information is collected using standard Linux utilites such as 'ethtool' or 'cat'.
 For example, 'Interface Statistics' are gathered using 'ethtool -S'.
 
-sfreport is designed for minimum impact on a system. However, for production systems, we recommend running outside of particularly busy periods.
+sfreport runs a series of Linux commands that are selected to be suitable to run on production systems. These read information, without changing any settings. However, there may be a performance impact while these commands are being run.
 
 ## Copyright
 
-This file: (c) Copyright 2020-2023 Advanced Micro Devices, Inc.
+This file: (c) Copyright 2026 Advanced Micro Devices, Inc.
