@@ -1,0 +1,77 @@
+.Dd January 06, 2026
+.Dt sfreport 8
+.Os Linux
+.Sh NAME
+.Nm sfreport
+.Nd diagnostics tool for AMD Solarflare hardware and software
+.Sh SYNOPSIS
+.Nm
+.Op Ar filename
+.Sh DESCRIPTION
+.Nm
+is an diagnostics tool for Linux systems running
+AMD Solarflare branded hardware and software.
+.Pp
+This Perl script generates an HTML file.
+You may specify an alternate file name on the command line.
+If the file name does not end in
+.Dq .htm
+or
+.Dq .html
+the information will be written in plain text format.
+.Pp
+The generated file contains information about the configuration of the
+AMD Solarflare NIC and the system it is installed in.
+.Pp
+For example:
+.Bl -bullet -compact
+.It
+Interface statistics such as packet drops
+.It
+AMD-Solarflare specific driver logging/error messages
+.It
+Firmware and driver settings + version information
+.It
+AMD-Solarflare product information such as NIC model
+.It
+System information such as CPU architechture, kernel and OS
+.El
+This information is intended for use by AMD Solarflare engineers but is recorded in a text format that may be useful to others.
+.Ss Usage
+For the collection of full diagnostics information, the
+.Nm
+script should be run with superuser permissions.
+.Pp
+For example:
+.Pp
+$ sudo
+.Nm
+.Pp
+The output of
+.Nm
+will be in html format.
+.Pp
+The default filename will be in the format
+.Pa sfreport-'hostname'-'date'-'time'.html
+and will be written to the current directory.
+.Ss Notes
+Information is collected using standard Linux utilites such as
+.Xr ethtool 8
+or
+.Xr cat 1 .
+For example,
+.Sq Interface Statistics
+are gathered using
+.Ic ethtool -S
+.Pp
+.Nm
+runs a series of Linux commands that are selected to be suitable to run on production systems.
+These read information, without changing any settings.
+However, there may be a performance impact while these commands are being run.
+.Sh BUGS
+Support for users of AMD Solarflare NICs is available from:
+.Aq support-nic@amd.com
+.Sh AUTHORS
+Advanced Micro Devices, Inc.
+.Sh COPYRIGHT
+Copyright (c) 2026 Advanced Micro Devices, Inc.
