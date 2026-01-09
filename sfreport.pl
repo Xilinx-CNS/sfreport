@@ -2445,13 +2445,16 @@ tabulate('TCP (IPv4) settings',
 	    print_heading("Version information for $iface_name (devlink dev info pci/$bus_info)");
 	    print_preformatted($devlink_file);
 	}
-      my @health_diagnose_options = ('nvcfg-active', 'nvcfg-next', 'nvcfg-stored');
-      foreach my $option (@health_diagnose_options) {
-        if (my $devlink_file =`devlink health diagnose pci/$bus_info reporter $option 2>/dev/null`) {
-	      print_heading("Config for $iface_name (devlink health diagnose pci/$bus_info reporter $option)");
-	      print_preformatted($devlink_file);
-	    }
-      }
+        my @health_diagnose_options = ('nvcfg-active', 'nvcfg-next','nvcfg-stored', 'nvlog', 'ramlog');
+        foreach my $option (@health_diagnose_options) {
+            if (my $devlink_file =`devlink health diagnose pci/$bus_info reporter $option 2>/dev/null`) {
+                my $hide = ($option eq 'nvlog'|| $option eq 'ramlog');
+                print_heading("$option  for $iface_name (devlink health diagnose pci/$bus_info reporter $option)", $hide ? "devlink_health_$iface_name\_$option" : undef, $hide);
+                print_preformatted($devlink_file);
+                next unless $hide;
+                print_footer("devlink_health_$iface_name\_$option");
+            }
+        }
     }
 
     #Collect all devlink params for all PCI devices into hash with parameter
