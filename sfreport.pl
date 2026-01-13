@@ -1631,23 +1631,15 @@ sub print_device_status {
         print_heading('PCIe slots info ');
         print_preformatted($pcieslot_file);
     }
-    
+
+    #Use lspci -xxxx to grab full configuration space
     for my $address (keys(%bridge_devices), keys(%sfc_devices)) {
-	print_heading("PCI configuration space for $address");
-	# Emulate lspci -x.
-	begin_preformatted(0);
-	for my $offset (0..0xff) {
-	    my $data = $devices->{$address}->read($offset, 1);
-	    last if !defined($data);
-	    if ($offset % 0x10 == 0) {
-		$out_file->printf("%02x:", $offset);
-	    }
-	    $out_file->printf(" %02x", ord($data));
-	    if ($offset % 0x10 == 0x0F) {
-		$out_file->print("\n");
-	    }
-	}
-	end_preformatted(0);
+        if (my $lspci_xxxx = `lspci -s $address -xxxx 2>/dev/null`) {
+            print_heading("PCI configuration space for $address");
+            #Remove first line returning nothing if no line break
+            $lspci_xxxx =~ s/^.*?(?:\n|$)//;
+            print_preformatted($lspci_xxxx);
+        }
     }
   print_footer('pci_config' );
 
