@@ -59,8 +59,9 @@ my $UPTIME = '';
 # Rules for what's interesting.
 # Keys are pseudo-type names.  Values are arrays of pseudo-tuples of
 # conditions and interest types.  Conditions are strings of the form
-# attribute-name comparison-operator attribute-name or
-# attribute-name comparison-operator integer.
+# attribute-name comparison-operator attribute-name, or
+# attribute-name comparison-operator integer or
+# attribute-name comparison-operator "string".
 my %interest_rules =
     (net_stats_sfc => [['rx_lt64 != 0', interest_badpkt],
 		       ['rx_gtjumbo != 0', interest_badpkt],
@@ -114,7 +115,8 @@ my %interest_rules =
             ['aer_dev_nonfatal_TOTAL_ERR_NONFATAL != 0', interest_error],
             ['aer_rootport_total_err_cor != 0', interest_warn],
             ['aer_rootport_total_err_fatal != 0', interest_error],
-            ['aer_rootport_total_err_nonfatal != 0', interest_error]]);
+            ['aer_rootport_total_err_nonfatal != 0', interest_error]],
+     system_summary => [['SELinux ne "Disabled"', interest_warn]]);
 
 # Extend $interest_rules{'net_stats_sfc'} to have port_ variants
 my @orig_net_stats_sfc = @{$interest_rules{'net_stats_sfc'}};
@@ -355,13 +357,7 @@ sub tabulate {
     }
     for my $i (0..$#$values) {
 	my $value = $values->[$i];
-    my $context;
-    if (ref($value) eq 'HASH') {
-        $context = $value->{$attributes->[0]};
-    } elsif (ref($value) eq 'ARRAY') {
-        $context = $value->[0];
-    }
-	my $value_interest = apply_interest_rules($type_name, $value, $context);
+    my $value_interest = apply_interest_rules($type_name, $value, $attributes);
 	for my $j (0..$#$attributes) {
 	    my $attr_value;
 	    if (ref($value) eq 'HASH') {
@@ -967,7 +963,7 @@ sub print_system_summary {
 	}
     }
 
-    tabulate('System Summary', undef, \@attributes, [\@value], orient_vert);
+    tabulate('System Summary', 'system_summary', \@attributes, [\@value], orient_vert);
 } # print_system_summary
 
 sub print_physical_memory {
@@ -3299,34 +3295,61 @@ sub print_aoe_status {
     }
 }
 
+# Check if our interesting condition applies to the current data.
+# conditions are in the form "<field> <operator> <value>" or
+#                            "<field> <operator> <other_field>":
+# type_name   type name of values to find interesting conditions 
+# values      ref to either array or hash of values
+# attributes  if value is an array ref, attributes should be aligned
+#             array of keys for each value in the array
 sub apply_interest_rules {
     my $result = {};
-    my ($type_name, $value, $context) = @_;
+    my ($type_name, $values, $attributes) = @_;
+    my $value;
+    my $context;
     if (defined($type_name) && exists($interest_rules{$type_name})) {
 	for my $rule (@{$interest_rules{$type_name}}) {
 	    my ($condition, $int_type) = @$rule;
 	    my @tokens = split / /, $condition;
         my $right_value;
         my $left_value;
-
-        next unless defined($value->{$tokens[0]});
-        $right_value = $tokens[2];
-        #if the right value is not a number (incl. hex 0x notation), it may
-        #be a key in a key value pair
-        if (!($tokens[2] =~ /^(-)?(0x[0-9a-fA-F]+|\d+(\.\d+)?)$/)) {
-            if (defined($value->{$tokens[2]})) {
-                $right_value = $value->{$tokens[2]};
+        if (ref($values) eq 'ARRAY') {
+            my $index = -1;
+            for my $i (0..$#$attributes) {
+                if ($attributes->[$i] eq $tokens[0]) {
+                    $index = $i;
+                    last;
+                }
             }
-            elsif (defined($value->{"port_" . $tokens[2]})) {
-                $right_value = $value->{"port_" . $tokens[2]};
+            next if $index == -1;
+            $right_value = $tokens[2];
+            $value = $values->[$index];
+            $context = $values->[0];
+        }
+        elsif (ref($values) eq 'HASH') {
+            next unless defined($values->{$tokens[0]});
+            $right_value = $tokens[2];
+            #if the right value is not a number (incl. hex 0x notation), it may
+            #be a key in a key value pair
+            if (!($tokens[2] =~ /^(-)?(0x[0-9a-fA-F]+|\d+(\.\d+)?)$/)) {
+                if (defined($values->{$tokens[2]})) {
+                    $right_value = $values->{$tokens[2]};
+                }
+                elsif (defined($values->{"port_" . $tokens[2]})) {
+                    $right_value = $values->{"port_" . $tokens[2]};
+                }
+            }
+            next unless defined($right_value);
+            $value = $values->{$tokens[0]};
+            if (defined $attributes) {
+                $context = $values->{$attributes->[0]};
             }
         }
-        next unless defined($right_value);
-        #if the right value is STILL not a number, we should evaluate the
+        next unless defined($value) && defined($right_value);
+        #if the right value is not a number, we should evaluate the
         #left side as a string also
         $left_value = $right_value =~ /^(-)?(0x[0-9a-fA-F]+|\d+(\.\d+)?)$/ ?
-        $value->{$tokens[0]} : "\"" . $value->{$tokens[0]} . "\"";
-        next unless defined($left_value);
+        $value : "\"" . $value . "\"";
 
 	    if (eval($left_value . ${tokens[1]} . $right_value)) {
             my $message = "$condition ($left_value)";
