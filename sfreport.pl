@@ -1808,26 +1808,26 @@ sub print_device_status {
     # not installed, so we must filter by status.
     my @packages;
     for (['RPM', [rpm_name_prefixes],
-	  "rpm -qa --queryformat '%{Name} %{Version} - - installed\\n'"],
+	  "rpm -qa --queryformat '%{Name} %{Version}-%{Release} %{Arch} - - installed\\n'"],
 	 ['deb', [deb_name_prefixes],
 	  join(' ',
-	       "dpkg-query -W -f '\${Package} \${Version} \${Status}\\n'",
+	       "dpkg-query -W -f '\${Package} \${Version} \${Architecture} \${Status}\\n'",
 	       map({"'$_*'"} deb_name_prefixes))]) {
 	my ($type, $prefixes, $command) = @$_;
 	if (my $query_file = new FileHandle("$command 2>/dev/null |")) {
 	    while (<$query_file>) {
 		chomp;
-		my ($name, $version, undef, undef, $status) = split(/ /);
+		my ($name, $version, $architecture, undef, undef, $status) = split(/ /);
 		if (grep({startswith($name, $_)} @$prefixes) &&
 		    $status eq 'installed') {
-		    push @packages, [$type, $name, $version];
+		    push @packages, [$type, $name, $version, $architecture];
 		}
 	    }
 	}
     }
     tabulate("AMD Solarflare software packages installed",
 	     undef,
-	     ['type', 'name', 'version'],
+	     ['type', 'name', 'version', 'architecture'],
 	     \@packages);
 
     # Onload kernel modules and shared libraries are not currently
