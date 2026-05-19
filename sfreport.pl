@@ -308,6 +308,7 @@ sub pairs {
 
 sub html_encode {
     my $result = shift;
+    return '' unless defined $result;
     $result =~ s/([\&<\'\"])/'&#'.ord($1).';'/eg;
     return $result;
 }
