@@ -2588,7 +2588,48 @@ tabulate('TCP (IPv4) settings',
         while (<$license_file>) {
             $output .= $_;
         }
+
+        my $cur_iface = '';
+        my %sfboot_fw_variant;
+        my %sfboot_switch_mode;
+        for my $line (split /\n/, $output) {
+            if ($line =~ /^(\S+):/) {
+                $cur_iface = $1;
+            } elsif ($cur_iface ne '' && $line =~ /Firmware variant\s+(.+?)\s*$/) {
+                $sfboot_fw_variant{$cur_iface} = $1;
+            } elsif ($cur_iface ne '' && $line =~ /Switch mode\s+(.+?)\s*$/) {
+                $sfboot_switch_mode{$cur_iface} = $1;
+            }
+        }
+
+        # Push one interesting entry per misconfigured interface and record
+        # each index so we can place matching anchors in the section body.
+        my %sfboot_bad_iface_idx;
+        for my $iface (sort keys %sfboot_fw_variant) {
+            if (($sfboot_fw_variant{$iface} // '') =~ /Ultra low latency/i &&
+                ($sfboot_switch_mode{$iface} // '') =~ /Partitioning/i) {
+                push @interesting_stuff,
+                  ["$iface - Unexpected sfboot configuration: "
+                   . "Firmware variant \"Ultra low latency\" is incompatible "
+                   . "with Switch mode \"Partitioning\". "
+                   . "Partitioning requires firmware variant \"Full feature\". "
+                   . "Run: sfboot -i $iface firmware-variant=full-feature. "
+                   . "Alternatively, use \"Low latency\" firmware variant "
+                   . "with default switch mode. "
+                   . "Run: sfboot -i $iface switch-mode=default "
+                   . "(cold reboot required)",
+                   interest_error];
+                $sfboot_bad_iface_idx{$iface} = $#interesting_stuff;
+            }
+        }
+
         print_heading('Sfboot Configurations (sfboot)','sfboot');
+        if ($out_format == format_html) {
+            for my $iface (sort keys %sfboot_bad_iface_idx) {
+                my $idx = $sfboot_bad_iface_idx{$iface};
+                $out_file->print("<a id=\"match$idx\"></a>\n");
+            }
+        }
         print_preformatted($output);
         print_footer('sfboot');
     }
